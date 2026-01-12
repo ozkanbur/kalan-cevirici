@@ -3,49 +3,254 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stok Ayrıştırıcı (Final)</title>
+    <title>Stok Yönetim Paneli</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#28a745">
+    <meta name="theme-color" content="#4a90e2">
     
     <script src="xlsx-populate.min.js"></script>
     <script src="FileSaver.min.js"></script>
     
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f0f2f5; text-align: center; }
-        .container { max-width: 600px; margin: 20px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h2 { color: #2c3e50; margin-bottom: 10px; }
-        p { color: #666; font-size: 14px; }
-        .drop-zone { border: 2px dashed #cbd5e0; border-radius: 8px; padding: 30px; margin: 20px 0; background: #f8fafc; cursor: pointer; transition: 0.3s; }
-        .drop-zone:hover { border-color: #28a745; background: #f0fff4; }
-        input[type=file] { display: none; }
-        .upload-btn { background: #28a745; color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer; display: inline-block; font-weight: bold; }
-        button#processBtn { background-color: #2c3e50; color: white; border: none; padding: 15px 30px; font-size: 16px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; transition: 0.3s; }
-        button#processBtn:hover { background-color: #34495e; }
-        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
-        #log { margin-top: 20px; text-align: left; font-size: 13px; max-height: 250px; overflow-y: auto; background: #2d3436; color: #dfe6e9; padding: 15px; border-radius: 8px; font-family: monospace; }
-        .success { color: #00b894; }
-        .error { color: #ff7675; }
-        .warning { color: #fdcb6e; }
+        :root {
+            --primary: #4a90e2;
+            --primary-dark: #357abd;
+            --secondary: #50e3c2;
+            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-main: #2c3e50;
+            --text-light: #7f8c8d;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: var(--bg-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+        }
+
+        .main-card {
+            width: 100%;
+            max-width: 700px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 40px;
+            margin: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.5);
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin: 0 0 10px 0;
+            font-weight: 700;
+            color: #1a252f;
+            letter-spacing: -0.5px;
+        }
+
+        p.subtitle {
+            color: var(--text-light);
+            font-size: 15px;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .highlight {
+            color: var(--primary);
+            font-weight: 600;
+            background: rgba(74, 144, 226, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* Drop Zone */
+        .drop-zone {
+            border: 2px dashed #cbd5e0;
+            border-radius: 16px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #fafbfc;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drop-zone:hover {
+            border-color: var(--primary);
+            background: #f0f7ff;
+            transform: translateY(-2px);
+        }
+
+        .icon-container {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 15px;
+            background: #eef4fb;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+        }
+
+        .drop-zone h3 {
+            margin: 0 0 5px;
+            font-size: 18px;
+        }
+
+        .drop-zone p {
+            font-size: 13px;
+            color: #95a5a6;
+            margin: 0;
+        }
+
+        /* Button */
+        .action-btn {
+            width: 100%;
+            padding: 18px;
+            margin-top: 25px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(74, 144, 226, 0.4);
+        }
+
+        .action-btn:active {
+            transform: translateY(0);
+        }
+
+        .action-btn:disabled {
+            background: #bdc3c7;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        /* Terminal Log */
+        .terminal-window {
+            margin-top: 30px;
+            background: #1e1e1e;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            display: none; /* Başlangıçta gizli */
+        }
+
+        .terminal-header {
+            background: #2d2d2d;
+            padding: 8px 15px;
+            display: flex;
+            gap: 6px;
+        }
+
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .red { background: #ff5f56; }
+        .yellow { background: #ffbd2e; }
+        .green { background: #27c93f; }
+
+        #log {
+            padding: 15px;
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            max-height: 200px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        /* Log Colors */
+        .log-item { margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
+        .log-success { color: #50e3c2; }
+        .log-error { color: #ff5f56; }
+        .log-wait { color: #f1c40f; }
+        
+        /* Dosya Seçildi Bilgisi */
+        #fileCount {
+            margin-top: 15px;
+            font-weight: 600;
+            color: var(--primary);
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .visible { opacity: 1 !important; display: block !important; }
+
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Stok Ayrıştırıcı (Kusursuz)</h2>
-    <p><b>"Kalan_Stok"</b> sayfası stil bozulmadan ve hata vermeden <b>D5</b> isminde ayrıştırılacaktır.</p>
-    
+<div class="main-card">
+    <header>
+        <h1>Excel Stok Sihirbazı</h1>
+        <p class="subtitle">
+            <span class="highlight">Kalan_Stok</span> sayfası korunur, diğerleri silinir.<br>
+            Dosya adı <span class="highlight">D5</span> hücresinden otomatik alınır.
+        </p>
+    </header>
+
     <div class="drop-zone" onclick="document.getElementById('upload').click()">
-        <span class="upload-btn">📂 Excel Dosyalarını Seç</span>
+        <div class="icon-container">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+        </div>
+        <h3>Excel Dosyalarını Buraya Bırakın</h3>
+        <p>veya seçmek için tıklayın (.xlsx)</p>
+        <div id="fileCount"></div>
         <input type="file" id="upload" multiple accept=".xlsx, .xls">
-        <div style="margin-top:10px; color:#aaa; font-size:12px;" id="fileCount">Henüz dosya seçilmedi</div>
     </div>
-    
-    <button id="processBtn" onclick="processFiles()">İşlemi Başlat</button>
-    
-    <div id="log">Sistem Hazır...</div>
+
+    <button id="processBtn" class="action-btn" onclick="processFiles()">
+        <span>İşlemi Başlat</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+
+    <div id="terminal" class="terminal-window">
+        <div class="terminal-header">
+            <div class="dot red"></div>
+            <div class="dot yellow"></div>
+            <div class="dot green"></div>
+        </div>
+        <div id="log">
+            </div>
+    </div>
 </div>
 
 <script>
+    // Service Worker
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Hatası:', err));
@@ -53,33 +258,43 @@
     }
 
     document.getElementById('upload').addEventListener('change', function(){
-        document.getElementById('fileCount').innerText = this.files.length + " dosya seçildi.";
+        const count = this.files.length;
+        const countDiv = document.getElementById('fileCount');
+        if(count > 0){
+            countDiv.innerText = `✓ ${count} adet dosya seçildi ve hazır.`;
+            countDiv.classList.add('visible');
+        }
     });
 
     const delay = ms => new Promise(res => setTimeout(res, ms));
 
+    // --- İŞLEVSİLLİK (KODLAR AYNI, GÖRSEL İYİLEŞTİRMELER EKLENDİ) ---
     async function processFiles() {
         const fileInput = document.getElementById('upload');
         const files = fileInput.files;
         const logDiv = document.getElementById('log');
         const btn = document.getElementById('processBtn');
+        const terminal = document.getElementById('terminal');
 
-        if (files.length === 0) { alert("Lütfen dosya seçin!"); return; }
+        if (files.length === 0) { alert("Lütfen önce dosya seçin!"); return; }
         
         if (typeof XlsxPopulate === 'undefined') {
-            logDiv.innerHTML = "<div class='error'>HATA: 'xlsx-populate.min.js' klasörde bulunamadı.</div>";
+            alert("Kütüphane hatası! xlsx-populate.min.js dosyası eksik.");
             return;
         }
 
+        // UI Güncelleme
         btn.disabled = true;
-        btn.innerText = "İşleniyor...";
-        logDiv.innerHTML = "";
+        btn.innerHTML = `<span>İşleniyor...</span>`;
+        terminal.style.display = "block"; // Terminali aç
+        logDiv.innerHTML = "<div class='log-item' style='color:#aaa'>--- Sistem Başlatıldı ---</div>";
         
         let processedCount = 0;
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            logDiv.innerHTML += `<div>⏳ ${file.name} işleniyor...</div>`;
+            logDiv.innerHTML += `<div class='log-item log-wait'>⏳ ${file.name} analiz ediliyor...</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight; // Otomatik aşağı kaydır
 
             try {
                 // Dosyayı Yükle
@@ -94,7 +309,7 @@
                 });
 
                 if (!targetSheet) {
-                    logDiv.innerHTML += `<div class="error">❌ "Kalan_Stok" bulunamadı: ${file.name}</div>`;
+                    logDiv.innerHTML += `<div class='log-item log-error'>❌ HATA: "Kalan_Stok" bulunamadı (${file.name})</div>`;
                     continue;
                 }
 
@@ -122,31 +337,31 @@
                 // 4. Sayfa İsmini Güncelle
                 targetSheet.name(targetName);
 
-                // 5. BOZUK DOSYA ÖNLEMİ (SADECE BU YETERLİ)
-                // Range seçimi yapmadan sadece sayfayı aktif yapıyoruz.
+                // 5. Onarım Hatası Önlemi
                 targetSheet.active(true);
 
                 // 6. Kaydet ve İndir
                 const blob = await workbook.outputAsync();
                 saveAs(blob, targetName + ".xlsx");
                 
-                logDiv.innerHTML += `<div class="success">✅ Tamam: ${targetName}.xlsx</div>`;
+                logDiv.innerHTML += `<div class='log-item log-success'>✅ BAŞARILI: ${targetName}.xlsx indirildi.</div>`;
                 processedCount++;
 
                 await delay(300);
 
             } catch (err) {
                 console.error(err);
-                logDiv.innerHTML += `<div class="error">⚠️ Hata: ${file.name} - ${err.message}</div>`;
+                logDiv.innerHTML += `<div class='log-item log-error'>⚠️ KRİTİK HATA: ${file.name} - ${err.message}</div>`;
             }
         }
 
         btn.disabled = false;
-        btn.innerText = "Tekrar İşlem Yap";
+        btn.innerHTML = `<span>Tekrar İşlem Yap</span> <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>`;
         
         if (processedCount > 0) {
-            logDiv.innerHTML += `<div style="color:#00b894; font-weight:bold; margin-top:10px;">🎉 İŞLEM BİTTİ!</div>`;
+            logDiv.innerHTML += `<div class='log-item' style='color:#50e3c2; font-weight:bold; margin-top:10px;'>--- İŞLEM TAMAMLANDI (${processedCount} Dosya) ---</div>`;
         }
+        logDiv.scrollTop = logDiv.scrollHeight;
     }
 </script>
 
