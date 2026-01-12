@@ -3,30 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stok Yönetim Paneli</title>
+    <title>Kalan Stok Cetveli Ayırıcı</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#4a90e2">
+    <meta name="theme-color" content="#1a1a2e">
     
     <script src="xlsx-populate.min.js"></script>
     <script src="FileSaver.min.js"></script>
     
     <style>
+        /* --- MODERN KOYU TEMA --- */
         :root {
-            --primary: #4a90e2;
-            --primary-dark: #357abd;
-            --secondary: #50e3c2;
-            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            --card-bg: rgba(255, 255, 255, 0.95);
-            --text-main: #2c3e50;
-            --text-light: #7f8c8d;
+            --bg-dark: #0f172a;       /* Çok koyu lacivert/siyah */
+            --card-dark: #1e293b;     /* Kart rengi */
+            --accent: #38bdf8;        /* Neon Mavi */
+            --accent-glow: rgba(56, 189, 248, 0.4);
+            --text-main: #f1f5f9;     /* Beyazımsı */
+            --text-muted: #94a3b8;    /* Gri */
+            --border-color: #334155;
+            --success: #10b981;
+            --error: #ef4444;
         }
 
         body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
             margin: 0;
-            padding: 0;
+            padding: 20px;
             min-height: 100vh;
-            background: var(--bg-gradient);
+            background: radial-gradient(circle at top right, #1e293b 0%, #0f172a 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -35,176 +38,164 @@
 
         .main-card {
             width: 100%;
-            max-width: 700px;
-            background: var(--card-bg);
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            padding: 40px;
-            margin: 20px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.5);
-            animation: slideUp 0.6s ease-out;
+            max-width: 600px;
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 50px 40px;
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(20px);
+            position: relative;
+            overflow: hidden;
         }
 
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+        /* Üstteki ince neon çizgi */
+        .main-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
         }
 
+        /* HEADER TASARIMI */
         header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
         }
 
-        h1 {
+        .brand-name {
             font-size: 28px;
-            margin: 0 0 10px 0;
-            font-weight: 700;
-            color: #1a252f;
+            font-weight: 800;
+            margin: 0;
+            background: linear-gradient(to right, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             letter-spacing: -0.5px;
         }
 
-        p.subtitle {
-            color: var(--text-light);
-            font-size: 15px;
-            line-height: 1.5;
-            margin: 0;
-        }
-
-        .highlight {
-            color: var(--primary);
+        .slogan {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 4px; /* Harfleri açarak premium hava veriyoruz */
+            color: var(--accent);
+            margin-top: 5px;
+            margin-bottom: 25px;
             font-weight: 600;
-            background: rgba(74, 144, 226, 0.1);
-            padding: 2px 6px;
-            border-radius: 4px;
+            opacity: 0.9;
         }
 
-        /* Drop Zone */
+        .app-title {
+            font-size: 18px;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin: 0;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+            display: inline-block;
+            width: 100%;
+        }
+
+        /* DROP ZONE */
         .drop-zone {
-            border: 2px dashed #cbd5e0;
+            background: rgba(15, 23, 42, 0.5);
+            border: 2px dashed var(--border-color);
             border-radius: 16px;
             padding: 40px 20px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
-            background: #fafbfc;
             position: relative;
-            overflow: hidden;
         }
 
         .drop-zone:hover {
-            border-color: var(--primary);
-            background: #f0f7ff;
-            transform: translateY(-2px);
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.05);
+            box-shadow: 0 0 20px var(--accent-glow);
         }
 
-        .icon-container {
-            width: 64px;
-            height: 64px;
-            margin: 0 auto 15px;
-            background: #eef4fb;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--primary);
+        .icon-box {
+            color: var(--text-muted);
+            margin-bottom: 15px;
+            transition: 0.3s;
         }
 
-        .drop-zone h3 {
-            margin: 0 0 5px;
-            font-size: 18px;
+        .drop-zone:hover .icon-box {
+            color: var(--accent);
+            transform: scale(1.1);
         }
 
         .drop-zone p {
-            font-size: 13px;
-            color: #95a5a6;
             margin: 0;
-        }
-
-        /* Button */
-        .action-btn {
-            width: 100%;
-            padding: 18px;
-            margin-top: 25px;
-            border: none;
-            border-radius: 12px;
-            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .action-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(74, 144, 226, 0.4);
-        }
-
-        .action-btn:active {
-            transform: translateY(0);
-        }
-
-        .action-btn:disabled {
-            background: #bdc3c7;
-            box-shadow: none;
-            cursor: not-allowed;
-        }
-
-        /* Terminal Log */
-        .terminal-window {
-            margin-top: 30px;
-            background: #1e1e1e;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            display: none; /* Başlangıçta gizli */
-        }
-
-        .terminal-header {
-            background: #2d2d2d;
-            padding: 8px 15px;
-            display: flex;
-            gap: 6px;
-        }
-
-        .dot { width: 10px; height: 10px; border-radius: 50%; }
-        .red { background: #ff5f56; }
-        .yellow { background: #ffbd2e; }
-        .green { background: #27c93f; }
-
-        #log {
-            padding: 15px;
-            color: #d4d4d4;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 13px;
-            max-height: 200px;
-            overflow-y: auto;
-            line-height: 1.6;
-        }
-
-        /* Log Colors */
-        .log-item { margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
-        .log-success { color: #50e3c2; }
-        .log-error { color: #ff5f56; }
-        .log-wait { color: #f1c40f; }
-        
-        /* Dosya Seçildi Bilgisi */
-        #fileCount {
-            margin-top: 15px;
-            font-weight: 600;
-            color: var(--primary);
             font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .file-status {
+            margin-top: 15px;
+            font-size: 13px;
+            color: var(--accent);
+            font-weight: 600;
             opacity: 0;
             transition: opacity 0.3s;
         }
-        
-        .visible { opacity: 1 !important; display: block !important; }
+
+        /* BUTON */
+        .action-btn {
+            width: 100%;
+            padding: 16px;
+            margin-top: 30px;
+            border: none;
+            border-radius: 12px;
+            background: var(--accent);
+            color: #0f172a; /* Zıtlık için koyu yazı */
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 0 15px var(--accent-glow);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .action-btn:hover {
+            background: #fff;
+            box-shadow: 0 0 25px rgba(255,255,255,0.4);
+            transform: translateY(-2px);
+        }
+
+        .action-btn:disabled {
+            background: var(--border-color);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* LOG EKRANI */
+        .log-container {
+            margin-top: 30px;
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            height: 150px;
+            overflow-y: auto;
+            color: #ccc;
+            display: none; /* Başlangıçta gizli */
+        }
+
+        .log-line { margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+        .success { color: var(--success); }
+        .error { color: var(--error); }
+        .processing { color: #facc15; }
+
+        /* Scrollbar Design */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
 
     </style>
 </head>
@@ -212,89 +203,75 @@
 
 <div class="main-card">
     <header>
-        <h1>Excel Stok Sihirbazı</h1>
-        <p class="subtitle">
-            <span class="highlight">Kalan_Stok</span> sayfası korunur, diğerleri silinir.<br>
-            Dosya adı <span class="highlight">D5</span> hücresinden otomatik alınır.
-        </p>
+        <div class="brand-name">Özkan KANBUR</div>
+        <div class="slogan">Türk Mühendisliğinin Dijital Gücü</div>
+        <h2 class="app-title">Kalan Stok Cetveli Ayırıcı</h2>
     </header>
 
     <div class="drop-zone" onclick="document.getElementById('upload').click()">
-        <div class="icon-container">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
+        <div class="icon-box">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
         </div>
-        <h3>Excel Dosyalarını Buraya Bırakın</h3>
-        <p>veya seçmek için tıklayın (.xlsx)</p>
-        <div id="fileCount"></div>
+        <p>Excel dosyalarını buraya sürükleyin veya tıklayın</p>
+        <div id="fileCount" class="file-status"></div>
         <input type="file" id="upload" multiple accept=".xlsx, .xls">
     </div>
 
-    <button id="processBtn" class="action-btn" onclick="processFiles()">
-        <span>İşlemi Başlat</span>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-    </button>
+    <button id="processBtn" class="action-btn" onclick="processFiles()">SİSTEMİ ÇALIŞTIR</button>
 
-    <div id="terminal" class="terminal-window">
-        <div class="terminal-header">
-            <div class="dot red"></div>
-            <div class="dot yellow"></div>
-            <div class="dot green"></div>
-        </div>
-        <div id="log">
-            </div>
-    </div>
+    <div id="log" class="log-container"></div>
 </div>
 
 <script>
-    // Service Worker
+    // --- Service Worker (Offline Mod) ---
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Hatası:', err));
+            navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Error:', err));
         });
     }
 
+    // Dosya Seçim Göstergesi
     document.getElementById('upload').addEventListener('change', function(){
         const count = this.files.length;
-        const countDiv = document.getElementById('fileCount');
+        const statusDiv = document.getElementById('fileCount');
         if(count > 0){
-            countDiv.innerText = `✓ ${count} adet dosya seçildi ve hazır.`;
-            countDiv.classList.add('visible');
+            statusDiv.innerText = `${count} ADET DOSYA HAZIR`;
+            statusDiv.style.opacity = '1';
         }
     });
 
     const delay = ms => new Promise(res => setTimeout(res, ms));
 
-    // --- İŞLEVSİLLİK (KODLAR AYNI, GÖRSEL İYİLEŞTİRMELER EKLENDİ) ---
+    // --- İŞLEM KODLARI (DEĞİŞTİRİLMEDİ - AYNI GÜVENİLİR YAPI) ---
     async function processFiles() {
         const fileInput = document.getElementById('upload');
         const files = fileInput.files;
         const logDiv = document.getElementById('log');
         const btn = document.getElementById('processBtn');
-        const terminal = document.getElementById('terminal');
 
-        if (files.length === 0) { alert("Lütfen önce dosya seçin!"); return; }
+        if (files.length === 0) { alert("Lütfen önce dosya yükleyin."); return; }
         
         if (typeof XlsxPopulate === 'undefined') {
-            alert("Kütüphane hatası! xlsx-populate.min.js dosyası eksik.");
+            alert("Sistem hatası: xlsx-populate.min.js eksik.");
             return;
         }
 
-        // UI Güncelleme
+        // UI Hazırlığı
         btn.disabled = true;
-        btn.innerHTML = `<span>İşleniyor...</span>`;
-        terminal.style.display = "block"; // Terminali aç
-        logDiv.innerHTML = "<div class='log-item' style='color:#aaa'>--- Sistem Başlatıldı ---</div>";
+        btn.innerText = "İŞLENİYOR...";
+        logDiv.style.display = "block";
+        logDiv.innerHTML = "<div class='log-line' style='color:#666'>/// Sistem başlatılıyor...</div>";
         
         let processedCount = 0;
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            logDiv.innerHTML += `<div class='log-item log-wait'>⏳ ${file.name} analiz ediliyor...</div>`;
-            logDiv.scrollTop = logDiv.scrollHeight; // Otomatik aşağı kaydır
+            logDiv.innerHTML += `<div class='log-line processing'>[İŞLEM] ${file.name} taranıyor...</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
 
             try {
                 // Dosyayı Yükle
@@ -309,7 +286,7 @@
                 });
 
                 if (!targetSheet) {
-                    logDiv.innerHTML += `<div class='log-item log-error'>❌ HATA: "Kalan_Stok" bulunamadı (${file.name})</div>`;
+                    logDiv.innerHTML += `<div class='log-line error'>[HATA] "Kalan_Stok" bulunamadı: ${file.name}</div>`;
                     continue;
                 }
 
@@ -334,32 +311,32 @@
                 });
                 sheetsToDelete.forEach(sheet => sheet.delete());
 
-                // 4. Sayfa İsmini Güncelle
+                // 4. Sayfa Adını Değiştir
                 targetSheet.name(targetName);
 
-                // 5. Onarım Hatası Önlemi
+                // 5. Onarım Hatasını Engelle (Aktif Yap)
                 targetSheet.active(true);
 
-                // 6. Kaydet ve İndir
+                // 6. Kaydet
                 const blob = await workbook.outputAsync();
                 saveAs(blob, targetName + ".xlsx");
                 
-                logDiv.innerHTML += `<div class='log-item log-success'>✅ BAŞARILI: ${targetName}.xlsx indirildi.</div>`;
+                logDiv.innerHTML += `<div class='log-line success'>[TAMAM] ${targetName}.xlsx oluşturuldu.</div>`;
                 processedCount++;
 
                 await delay(300);
 
             } catch (err) {
                 console.error(err);
-                logDiv.innerHTML += `<div class='log-item log-error'>⚠️ KRİTİK HATA: ${file.name} - ${err.message}</div>`;
+                logDiv.innerHTML += `<div class='log-line error'>[KRİTİK] ${file.name} - ${err.message}</div>`;
             }
         }
 
         btn.disabled = false;
-        btn.innerHTML = `<span>Tekrar İşlem Yap</span> <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>`;
+        btn.innerText = "YENİDEN BAŞLAT";
         
         if (processedCount > 0) {
-            logDiv.innerHTML += `<div class='log-item' style='color:#50e3c2; font-weight:bold; margin-top:10px;'>--- İŞLEM TAMAMLANDI (${processedCount} Dosya) ---</div>`;
+            logDiv.innerHTML += `<div class='log-line success' style='margin-top:10px; font-weight:bold;'>/// TÜM İŞLEMLER BAŞARIYLA TAMAMLANDI.</div>`;
         }
         logDiv.scrollTop = logDiv.scrollHeight;
     }
