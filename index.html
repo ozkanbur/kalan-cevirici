@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stok Ayrıştırıcı (Final Fix)</title>
+    <title>Stok Ayrıştırıcı (Final)</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#28a745">
     
@@ -32,7 +32,7 @@
 
 <div class="container">
     <h2>Stok Ayrıştırıcı (Kusursuz)</h2>
-    <p><b>"Kalan_Stok"</b> sayfası stil ve yapısı bozulmadan <b>D5</b> isminde ayrıştırılacaktır.</p>
+    <p><b>"Kalan_Stok"</b> sayfası stil bozulmadan ve hata vermeden <b>D5</b> isminde ayrıştırılacaktır.</p>
     
     <div class="drop-zone" onclick="document.getElementById('upload').click()">
         <span class="upload-btn">📂 Excel Dosyalarını Seç</span>
@@ -46,7 +46,6 @@
 </div>
 
 <script>
-    // Service Worker
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Hatası:', err));
@@ -83,7 +82,7 @@
             logDiv.innerHTML += `<div>⏳ ${file.name} işleniyor...</div>`;
 
             try {
-                // Dosyayı yükle
+                // Dosyayı Yükle
                 const workbook = await XlsxPopulate.fromDataAsync(file);
 
                 // 1. Hedef Sayfayı Bul
@@ -99,7 +98,7 @@
                     continue;
                 }
 
-                // 2. D5 Hücresinden İsmi Al
+                // 2. D5'ten İsmi Al
                 const cellValue = targetSheet.cell("D5").value();
                 let targetName = "";
 
@@ -109,10 +108,9 @@
                     targetName = file.name.replace(/\.[^/.]+$/, "") + "_stok";
                 }
                 
-                // İsim temizliği
                 targetName = targetName.replace(/[<>:"/\\|?*]/g, "_").substring(0, 31);
 
-                // 3. Diğer sayfaları sil
+                // 3. Diğer Sayfaları Sil
                 const sheetsToDelete = [];
                 workbook.sheets().forEach(sheet => {
                     if (sheet.name() !== targetSheet.name()) {
@@ -121,16 +119,14 @@
                 });
                 sheetsToDelete.forEach(sheet => sheet.delete());
 
-                // 4. Sayfa Adını Değiştir
+                // 4. Sayfa İsmini Güncelle
                 targetSheet.name(targetName);
 
-                // 5. BOZUK DOSYA UYARISINI ENGELLEMEK İÇİN:
-                // Kalan tek sayfayı "aktif" yapıyoruz ve A1 hücresini seçiyoruz.
-                // Bu işlem Excel'in "Hangi sayfadaydım?" şaşkınlığını giderir.
-                targetSheet.active(true); 
-                targetSheet.range("A1").select();
+                // 5. BOZUK DOSYA ÖNLEMİ (SADECE BU YETERLİ)
+                // Range seçimi yapmadan sadece sayfayı aktif yapıyoruz.
+                targetSheet.active(true);
 
-                // 6. Çıktı Al ve İndir
+                // 6. Kaydet ve İndir
                 const blob = await workbook.outputAsync();
                 saveAs(blob, targetName + ".xlsx");
                 
