@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stok Ayrıştırıcı</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#28a745">
+    
+    <script src="xlsx.full.min.js"></script>
+    <script src="jszip.min.js"></script>
+    <script src="FileSaver.min.js"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f0f2f5; text-align: center; }
+        .container { max-width: 600px; margin: 20px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { color: #2c3e50; margin-bottom: 10px; }
+        p { color: #666; font-size: 14px; }
+        .drop-zone { border: 2px dashed #cbd5e0; border-radius: 8px; padding: 30px; margin: 20px 0; background: #f8fafc; cursor: pointer; transition: 0.3s; }
+        .drop-zone:hover { border-color: #28a745; background: #f0fff4; }
+        input[type=file] { display: none; }
+        .upload-btn { background: #28a745; color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer; display: inline-block; font-weight: bold; }
+        button#processBtn { background-color: #2c3e50; color: white; border: none; padding: 15px 30px; font-size: 16px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; transition: 0.3s; }
+        button#processBtn:hover { background-color: #34495e; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        #log { margin-top: 20px; text-align: left; font-size: 13px; max-height: 250px; overflow-y: auto; background: #2d3436; color: #dfe6e9; padding: 15px; border-radius: 8px; font-family: monospace; }
+        .success { color: #00b894; }
+        .error { color: #ff7675; }
+        .info { color: #74b9ff; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Stok Sayfası Ayrıştırıcı</h2>
+    <p>Dosyaları seçin. Sistem <b>"Kalan_Stok"</b> sayfasını bulup, <b>D5</b> hücresindeki isme göre ayıracaktır.</p>
+    
+    <div class="drop-zone" onclick="document.getElementById('upload').click()">
+        <span class="upload-btn">📂 Excel Dosyalarını Seç</span>
+        <input type="file" id="upload" multiple accept=".xlsx, .xls">
+        <div style="margin-top:10px; color:#aaa; font-size:12px;" id="fileCount">Henüz dosya seçilmedi</div>
+    </div>
+    
+    <button id="processBtn" onclick="processFiles()">İşlemi Başlat ve ZIP İndir</button>
+    
+    <div id="log">Logs...</div>
+</div>
+
+<script>
+    // --- PWA (Service Worker) Kaydı ---
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('Service Worker kayıtlı.', reg.scope))
+                .catch(err => console.log('Service Worker hatası:', err));
+        });
+    }
+
+    // Dosya seçildiğinde sayısını göster
+    document.getElementById('upload').addEventListener('change', function(){
+        document.getElementById('fileCount').innerText = this.files.length + " dosya seçildi.";
+    });
+
+    async function processFiles() {
+        const fileInput = document.getElementById('upload');
+        const files = fileInput.files;
+        const logDiv = document.getElementById('log');
+        const btn = document.getElementById('processBtn');
+
+        if (files.length === 0) { alert("Lütfen dosya seçin!"); return; }
+        
+        // Kütüphane kontrolü
+        if (typeof XLSX === 'undefined') {
+            logDiv.innerHTML = "<div class='error'>HATA: Kütüphane dosyaları bulunamadı (xlsx.full.min.js vb.). Lütfen dosyaların klasörde olduğundan emin olun.</div>";
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerText = "İşleniyor...";
+        logDiv.innerHTML = "";
+        
+        const zip = new JSZip();
+        let processedCount = 0;
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            logDiv.innerHTML += `<div>⏳ ${file.name} okunuyor...</div>`;
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+                // GÜNCELLEME BURADA: Sayfa Adı "Kalan_Stok"
+                let sheetName = "Kalan_Stok";
+                if (!workbook.Sheets[sheetName]) {
+                    // Belki küçük harfle yazılmıştır diye kontrol (Opsiyonel)
+                    sheetName = Object.keys(workbook.Sheets).find(n => n.toLowerCase() === "kalan_stok");
+                }
+
+                if (!workbook.Sheets[sheetName]) {
+                    logDiv.innerHTML += `<div class="error">❌ "Kalan_Stok" sayfası yok: ${file.name}</div>`;
+                    continue;
+                }
+
+                const sheet = workbook.Sheets[sheetName];
+                
+                // GÜNCELLEME BURADA: Hücre Adı "D5"
+                const cellAddress = "D5"; 
+                const cell = sheet[cellAddress];
+                
+                let targetName = "";
+                if (cell && cell.v) {
+                    targetName = cell.v.toString().trim();
+                } 
+
+                // Eğer D5 boşsa dosya adının sonuna _stok ekle
+                if (!targetName) {
+                    targetName = file.name.replace(/\.[^/.]+$/, "") + "_stok";
+                    logDiv.innerHTML += `<div class="info">ℹ️ D5 boş, dosya adı kullanıldı.</div>`;
+                }
+
+                // Dosya adında yasaklı karakterleri temizle
+                targetName = targetName.replace(/[<>:"/\\|?*]/g, "_");
+
+                // Yeni Kitap Oluştur
+                const newWb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(newWb, sheet, sheetName);
+                
+                // Dosyayı oluştur ve Zipe ekle
+                const wbOut = XLSX.write(newWb, { bookType: 'xlsx', type: 'array' });
+                zip.file(targetName + ".xlsx", wbOut);
+                
+                logDiv.innerHTML += `<div class="success">✅ Eklendi: ${targetName}.xlsx</div>`;
+                processedCount++;
+
+            } catch (err) {
+                console.error(err);
+                logDiv.innerHTML += `<div class="error">⚠️ Hata: ${file.name} - ${err.message}</div>`;
+            }
+        }
+
+        if (processedCount > 0) {
+            logDiv.innerHTML += `<div style="color:yellow; margin-top:10px;">📦 Sıkıştırılıyor...</div>`;
+            zip.generateAsync({ type: "blob" }).then(function(content) {
+                saveAs(content, "Ayristirilmis_Stoklar.zip");
+                logDiv.innerHTML += `<div class="success" style="font-weight:bold; font-size:14px;">🎉 İŞLEM TAMAMLANDI! İndiriliyor...</div>`;
+                btn.disabled = false;
+                btn.innerText = "Tekrar İşlem Yap";
+            });
+        } else {
+            logDiv.innerHTML += `<div class="error">Hiçbir uygun dosya bulunamadı.</div>`;
+            btn.disabled = false;
+            btn.innerText = "Tekrar Dene";
+        }
+    }
+</script>
+
+</body>
+</html>
