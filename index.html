@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stok Ayrıştırıcı (Final - Clean)</title>
+    <title>Stok Ayrıştırıcı (Final Fix)</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#28a745">
     
@@ -32,7 +32,7 @@
 
 <div class="container">
     <h2>Stok Ayrıştırıcı (Kusursuz)</h2>
-    <p><b>"Kalan_Stok"</b> sayfası; stil bozulmadan ve hata vermeden <b>D5</b> isminde ayrıştırılacaktır.</p>
+    <p><b>"Kalan_Stok"</b> sayfası stil ve yapısı bozulmadan <b>D5</b> isminde ayrıştırılacaktır.</p>
     
     <div class="drop-zone" onclick="document.getElementById('upload').click()">
         <span class="upload-btn">📂 Excel Dosyalarını Seç</span>
@@ -46,7 +46,7 @@
 </div>
 
 <script>
-    // Service Worker Kaydı
+    // Service Worker
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Hatası:', err));
@@ -68,7 +68,7 @@
         if (files.length === 0) { alert("Lütfen dosya seçin!"); return; }
         
         if (typeof XlsxPopulate === 'undefined') {
-            logDiv.innerHTML = "<div class='error'>HATA: 'xlsx-populate.min.js' dosyası eksik!</div>";
+            logDiv.innerHTML = "<div class='error'>HATA: 'xlsx-populate.min.js' klasörde bulunamadı.</div>";
             return;
         }
 
@@ -83,7 +83,7 @@
             logDiv.innerHTML += `<div>⏳ ${file.name} işleniyor...</div>`;
 
             try {
-                // Dosyayı aç
+                // Dosyayı yükle
                 const workbook = await XlsxPopulate.fromDataAsync(file);
 
                 // 1. Hedef Sayfayı Bul
@@ -95,7 +95,7 @@
                 });
 
                 if (!targetSheet) {
-                    logDiv.innerHTML += `<div class="error">❌ "Kalan_Stok" yok: ${file.name}</div>`;
+                    logDiv.innerHTML += `<div class="error">❌ "Kalan_Stok" bulunamadı: ${file.name}</div>`;
                     continue;
                 }
 
@@ -109,10 +109,10 @@
                     targetName = file.name.replace(/\.[^/.]+$/, "") + "_stok";
                 }
                 
-                // İsim Temizliği (Windows dosya sistemi ve Excel sayfa adı kuralları)
+                // İsim temizliği
                 targetName = targetName.replace(/[<>:"/\\|?*]/g, "_").substring(0, 31);
 
-                // 3. DİĞER SAYFALARI SİL
+                // 3. Diğer sayfaları sil
                 const sheetsToDelete = [];
                 workbook.sheets().forEach(sheet => {
                     if (sheet.name() !== targetSheet.name()) {
@@ -121,29 +121,23 @@
                 });
                 sheetsToDelete.forEach(sheet => sheet.delete());
 
-                // 4. KRİTİK ADIM: TANIMLI ADLARI (NAMED RANGES) TEMİZLE
-                // Hatanın asıl kaynağı burasıdır. Silinen sayfalara giden referansları yok ediyoruz.
-                const definedNames = workbook.definedNames();
-                definedNames.forEach(name => {
-                    // Tüm tanımlı adları siliyoruz (Güvenli temizlik)
-                    // Eğer dosyanızda özel makro tanımları varsa burayı revize ederiz ama %99 gerekmez.
-                    name.delete();
-                });
-
-                // 5. Sayfanın Adını Değiştir
+                // 4. Sayfa Adını Değiştir
                 targetSheet.name(targetName);
 
-                // 6. Aktif Sayfa Olarak İşaretle (Görünüm Hatasını Önler)
-                targetSheet.active(true);
+                // 5. BOZUK DOSYA UYARISINI ENGELLEMEK İÇİN:
+                // Kalan tek sayfayı "aktif" yapıyoruz ve A1 hücresini seçiyoruz.
+                // Bu işlem Excel'in "Hangi sayfadaydım?" şaşkınlığını giderir.
+                targetSheet.active(true); 
+                targetSheet.range("A1").select();
 
-                // 7. Dosyayı Oluştur ve İndir
+                // 6. Çıktı Al ve İndir
                 const blob = await workbook.outputAsync();
                 saveAs(blob, targetName + ".xlsx");
                 
                 logDiv.innerHTML += `<div class="success">✅ Tamam: ${targetName}.xlsx</div>`;
                 processedCount++;
 
-                await delay(300); // Tarayıcıyı rahatlat
+                await delay(300);
 
             } catch (err) {
                 console.error(err);
