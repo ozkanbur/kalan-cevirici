@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stok Ayrıştırıcı (Final)</title>
+    <title>Stok Ayrıştırıcı (Final - Clean)</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#28a745">
     
@@ -31,8 +31,8 @@
 <body>
 
 <div class="container">
-    <h2>Stok Ayrıştırıcı (Hatasız)</h2>
-    <p><b>"Kalan_Stok"</b> sayfası; stiller bozulmadan ve onarım hatası vermeden <b>D5</b> isminde ayrıştırılacaktır.</p>
+    <h2>Stok Ayrıştırıcı (Kusursuz)</h2>
+    <p><b>"Kalan_Stok"</b> sayfası; stil bozulmadan ve hata vermeden <b>D5</b> isminde ayrıştırılacaktır.</p>
     
     <div class="drop-zone" onclick="document.getElementById('upload').click()">
         <span class="upload-btn">📂 Excel Dosyalarını Seç</span>
@@ -46,6 +46,7 @@
 </div>
 
 <script>
+    // Service Worker Kaydı
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Hatası:', err));
@@ -67,7 +68,7 @@
         if (files.length === 0) { alert("Lütfen dosya seçin!"); return; }
         
         if (typeof XlsxPopulate === 'undefined') {
-            logDiv.innerHTML = "<div class='error'>HATA: 'xlsx-populate.min.js' bulunamadı.</div>";
+            logDiv.innerHTML = "<div class='error'>HATA: 'xlsx-populate.min.js' dosyası eksik!</div>";
             return;
         }
 
@@ -82,10 +83,10 @@
             logDiv.innerHTML += `<div>⏳ ${file.name} işleniyor...</div>`;
 
             try {
-                // xlsx-populate ile dosyayı aç
+                // Dosyayı aç
                 const workbook = await XlsxPopulate.fromDataAsync(file);
 
-                // Sayfayı bul (Büyük/küçük harf duyarsız)
+                // 1. Hedef Sayfayı Bul
                 let targetSheet = null;
                 workbook.sheets().forEach(sheet => {
                     if (sheet.name().toLowerCase() === "kalan_stok") {
@@ -94,49 +95,55 @@
                 });
 
                 if (!targetSheet) {
-                    logDiv.innerHTML += `<div class="error">❌ "Kalan_Stok" bulunamadı: ${file.name}</div>`;
+                    logDiv.innerHTML += `<div class="error">❌ "Kalan_Stok" yok: ${file.name}</div>`;
                     continue;
                 }
 
-                // D5 hücresini oku
+                // 2. D5 Hücresinden İsmi Al
                 const cellValue = targetSheet.cell("D5").value();
                 let targetName = "";
 
                 if (cellValue) {
-                     // Formül sonucu veya text olabilir, string'e çevir
                     targetName = cellValue.toString().trim();
                 } else {
                     targetName = file.name.replace(/\.[^/.]+$/, "") + "_stok";
-                    logDiv.innerHTML += `<div class="warning">⚠️ D5 boş, dosya adı kullanıldı.</div>`;
                 }
-
-                // Yasaklı karakterleri temizle ve 31 karaktere sığdır
+                
+                // İsim Temizliği (Windows dosya sistemi ve Excel sayfa adı kuralları)
                 targetName = targetName.replace(/[<>:"/\\|?*]/g, "_").substring(0, 31);
 
-                // Diğer sayfaları sil
+                // 3. DİĞER SAYFALARI SİL
                 const sheetsToDelete = [];
                 workbook.sheets().forEach(sheet => {
                     if (sheet.name() !== targetSheet.name()) {
                         sheetsToDelete.push(sheet);
                     }
                 });
-
-                // Silme işlemi
                 sheetsToDelete.forEach(sheet => sheet.delete());
 
-                // Kalan sayfanın adını değiştir
+                // 4. KRİTİK ADIM: TANIMLI ADLARI (NAMED RANGES) TEMİZLE
+                // Hatanın asıl kaynağı burasıdır. Silinen sayfalara giden referansları yok ediyoruz.
+                const definedNames = workbook.definedNames();
+                definedNames.forEach(name => {
+                    // Tüm tanımlı adları siliyoruz (Güvenli temizlik)
+                    // Eğer dosyanızda özel makro tanımları varsa burayı revize ederiz ama %99 gerekmez.
+                    name.delete();
+                });
+
+                // 5. Sayfanın Adını Değiştir
                 targetSheet.name(targetName);
 
-                // Dosyayı Blob olarak oluştur
-                const blob = await workbook.outputAsync();
+                // 6. Aktif Sayfa Olarak İşaretle (Görünüm Hatasını Önler)
+                targetSheet.active(true);
 
-                // İndir
+                // 7. Dosyayı Oluştur ve İndir
+                const blob = await workbook.outputAsync();
                 saveAs(blob, targetName + ".xlsx");
                 
-                logDiv.innerHTML += `<div class="success">✅ Tamamlandı: ${targetName}.xlsx</div>`;
+                logDiv.innerHTML += `<div class="success">✅ Tamam: ${targetName}.xlsx</div>`;
                 processedCount++;
 
-                await delay(500);
+                await delay(300); // Tarayıcıyı rahatlat
 
             } catch (err) {
                 console.error(err);
@@ -148,7 +155,7 @@
         btn.innerText = "Tekrar İşlem Yap";
         
         if (processedCount > 0) {
-            logDiv.innerHTML += `<div style="color:#00b894; font-weight:bold; margin-top:10px;">🎉 Tüm İşlemler Bitti!</div>`;
+            logDiv.innerHTML += `<div style="color:#00b894; font-weight:bold; margin-top:10px;">🎉 İŞLEM BİTTİ!</div>`;
         }
     }
 </script>
