@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stok Ayrıştırıcı (Hatasız Mod)</title>
+    <title>Stok Ayrıştırıcı (PRO Mod)</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#28a745">
     
-    <script src="xlsx.full.min.js"></script>
+    <script src="exceljs.min.js"></script>
     <script src="FileSaver.min.js"></script>
     
     <style>
@@ -31,8 +31,8 @@
 <body>
 
 <div class="container">
-    <h2>Stok Sayfası Ayrıştırıcı</h2>
-    <p><b>"Kalan_Stok"</b> sayfası <b>D5</b> hücresindeki isimle, tüm formatlar korunarak kaydedilecektir.</p>
+    <h2>Stok Ayrıştırıcı (PRO)</h2>
+    <p><b>"Kalan_Stok"</b> sayfası; renkler, kenarlıklar ve formüller bozulmadan <b>D5</b> isminde ayrıştırılacaktır.</p>
     
     <div class="drop-zone" onclick="document.getElementById('upload').click()">
         <span class="upload-btn">📂 Excel Dosyalarını Seç</span>
@@ -46,6 +46,7 @@
 </div>
 
 <script>
+    // --- PWA Kaydı ---
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Hatası:', err));
@@ -65,8 +66,10 @@
         const btn = document.getElementById('processBtn');
 
         if (files.length === 0) { alert("Lütfen dosya seçin!"); return; }
-        if (typeof XLSX === 'undefined') {
-            logDiv.innerHTML = "<div class='error'>HATA: 'xlsx.full.min.js' dosyası klasörde yok veya adı yanlış.</div>";
+        
+        // ExcelJS Kütüphane Kontrolü
+        if (typeof ExcelJS === 'undefined') {
+            logDiv.innerHTML = "<div class='error'>HATA: 'exceljs.min.js' bulunamadı. Lütfen klasörü kontrol edin.</div>";
             return;
         }
 
@@ -78,71 +81,89 @@
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            logDiv.innerHTML += `<div>⏳ ${file.name} işleniyor...</div>`;
+            logDiv.innerHTML += `<div>⏳ ${file.name} okunuyor...</div>`;
 
             try {
                 const arrayBuffer = await file.arrayBuffer();
                 
-                // 1. Dosyayı tüm özellikleriyle (Stil, Formül, Format) oku
-                const workbook = XLSX.read(arrayBuffer, { type: 'array', cellStyles: true, cellFormulas: true, cellNF: true, cellDates: true });
+                // ExcelJS ile dosyayı yükle (Stilleri korur)
+                const workbook = new ExcelJS.Workbook();
+                await workbook.xlsx.load(arrayBuffer);
 
-                // 2. "Kalan_Stok" sayfasını bul
-                let originalSheetName = "Kalan_Stok";
-                let foundName = Object.keys(workbook.Sheets).find(n => n.toLowerCase() === originalSheetName.toLowerCase());
+                // "Kalan_Stok" sayfasını bul
+                let targetSheet = null;
+                workbook.eachSheet((sheet, id) => {
+                    if (sheet.name.toLowerCase() === "kalan_stok") {
+                        targetSheet = sheet;
+                    }
+                });
 
-                if (!foundName) {
-                    logDiv.innerHTML += `<div class="error">❌ "Kalan_Stok" sayfası bulunamadı: ${file.name}</div>`;
+                if (!targetSheet) {
+                    logDiv.innerHTML += `<div class="error">❌ "Kalan_Stok" bulunamadı: ${file.name}</div>`;
                     continue;
                 }
 
-                const sheet = workbook.Sheets[foundName];
-                
-                // 3. D5 hücresinden ismi al
-                const cell = sheet["D5"];
+                // D5 hücresindeki veriyi güvenli al
+                const d5Cell = targetSheet.getCell('D5');
                 let targetName = "";
-                
-                if (cell && cell.v) {
-                    targetName = cell.v.toString().trim();
-                } else {
+
+                // ExcelJS'de hücre değeri nesne olabilir (formül, rich text vs.)
+                if (d5Cell.value) {
+                    if (typeof d5Cell.value === 'object' && d5Cell.value.result) {
+                        targetName = d5Cell.value.result.toString(); // Formül sonucu
+                    } else if (typeof d5Cell.value === 'object' && d5Cell.value.richText) {
+                         // Zengin metin ise düz metne çevir
+                        targetName = d5Cell.value.richText.map(t => t.text).join('');
+                    } else {
+                        targetName = d5Cell.value.toString(); // Düz veri
+                    }
+                }
+
+                // D5 boşsa dosya adını kullan
+                if (!targetName || targetName.trim() === "") {
                     targetName = file.name.replace(/\.[^/.]+$/, "") + "_stok";
                     logDiv.innerHTML += `<div class="warning">⚠️ D5 boş, dosya adı kullanıldı.</div>`;
                 }
-                
-                // Geçersiz karakterleri temizle (Dosya sistemi için)
-                // Excel sayfa adı için de maksimum 31 karakter sınırı vardır
-                targetName = targetName.replace(/[<>:"/\\|?*]/g, "_").substring(0, 31);
 
-                // 4. DİĞER SAYFALARI SİLME İŞLEMİ
-                const sheetsToDelete = workbook.SheetNames.filter(n => n !== foundName);
-                sheetsToDelete.forEach(sheetName => {
-                    delete workbook.Sheets[sheetName];
+                // Yasaklı karakterleri temizle
+                targetName = targetName.trim().replace(/[<>:"/\\|?*]/g, "_").substring(0, 31);
+
+                // Diğer sayfaları sil
+                // Not: ExcelJS'de döngü içindeyken silmek index hatası verebilir, önce ID'leri topluyoruz.
+                const sheetsToRemove = [];
+                workbook.eachSheet((sheet, id) => {
+                    if (sheet.name !== targetSheet.name) {
+                        sheetsToRemove.push(sheet.id);
+                    }
                 });
 
-                // 5. SAYFA ADINI GÜNCELLEME (GÜVENLİ YÖNTEM)
-                if (foundName !== targetName) {
-                    workbook.Sheets[targetName] = workbook.Sheets[foundName];
-                    delete workbook.Sheets[foundName];
-                    workbook.SheetNames = [targetName];
-                } else {
-                    workbook.SheetNames = [foundName];
-                }
+                sheetsToRemove.forEach(id => {
+                    const sheet = workbook.getWorksheet(id);
+                    if(sheet) workbook.removeWorksheet(sheet.id);
+                });
 
-                // 6. KRİTİK DÜZELTME: GÖRÜNÜM AYARLARINI SIFIRLA
-                // "Onarılan Bölüm" hatasının çözümü buradadır.
-                // Excel'e "Sadece 1. sekme var ve o aktif" diyoruz.
-                if (!workbook.Workbook) workbook.Workbook = {};
-                workbook.Workbook.Views = [{ ActiveTab: 0, FirstSheet: 0, Visibility: "visible" }];
+                // Kalan sayfanın adını güncelle
+                targetSheet.name = targetName;
 
-                // 7. Dosyayı oluştur ve indir
-                const wbOut = XLSX.write(workbook, { bookType: 'xlsx', type: 'array', cellStyles: true });
-                const blob = new Blob([wbOut], {type: "application/octet-stream"});
+                // Görünüm ayarlarını sıfırla (Bozuk dosya hatasını engeller)
+                workbook.views = [
+                    {
+                        x: 0, y: 0, width: 10000, height: 20000,
+                        firstSheet: 0, activeTab: 0, visibility: 'visible'
+                    }
+                ];
+
+                // Dosyayı oluştur (Buffer olarak)
+                const buffer = await workbook.xlsx.writeBuffer();
                 
+                // Dosyayı indir
+                const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
                 saveAs(blob, targetName + ".xlsx");
                 
                 logDiv.innerHTML += `<div class="success">✅ Başarılı: ${targetName}.xlsx</div>`;
                 processedCount++;
 
-                await delay(500); // Tarayıcıyı rahatlat
+                await delay(500); // Tarayıcıyı beklet
 
             } catch (err) {
                 console.error(err);
@@ -154,7 +175,7 @@
         btn.innerText = "Tekrar İşlem Yap";
         
         if (processedCount > 0) {
-            logDiv.innerHTML += `<div style="color:#00b894; font-weight:bold; margin-top:10px;">🎉 Tüm İşlemler Bitti!</div>`;
+            logDiv.innerHTML += `<div style="color:#00b894; font-weight:bold; margin-top:10px;">🎉 İşlem Tamamlandı!</div>`;
         }
     }
 </script>
