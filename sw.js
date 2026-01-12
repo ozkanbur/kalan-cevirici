@@ -1,9 +1,9 @@
-const CACHE_NAME = 'stok-app-pro-v1';
+const CACHE_NAME = 'stok-app-final-v1';
 const urlsToCache = [
   './',
   './index.html',
   './manifest.json',
-  './exceljs.min.js',
+  './xlsx-populate.min.js',
   './FileSaver.min.js'
 ];
 

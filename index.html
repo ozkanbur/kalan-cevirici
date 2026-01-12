@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stok Ayrıştırıcı (PRO Mod)</title>
+    <title>Stok Ayrıştırıcı (Final)</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#28a745">
     
-    <script src="exceljs.min.js"></script>
+    <script src="xlsx-populate.min.js"></script>
     <script src="FileSaver.min.js"></script>
     
     <style>
@@ -31,8 +31,8 @@
 <body>
 
 <div class="container">
-    <h2>Stok Ayrıştırıcı (PRO)</h2>
-    <p><b>"Kalan_Stok"</b> sayfası; renkler, kenarlıklar ve formüller bozulmadan <b>D5</b> isminde ayrıştırılacaktır.</p>
+    <h2>Stok Ayrıştırıcı (Hatasız)</h2>
+    <p><b>"Kalan_Stok"</b> sayfası; stiller bozulmadan ve onarım hatası vermeden <b>D5</b> isminde ayrıştırılacaktır.</p>
     
     <div class="drop-zone" onclick="document.getElementById('upload').click()">
         <span class="upload-btn">📂 Excel Dosyalarını Seç</span>
@@ -46,7 +46,6 @@
 </div>
 
 <script>
-    // --- PWA Kaydı ---
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Hatası:', err));
@@ -67,9 +66,8 @@
 
         if (files.length === 0) { alert("Lütfen dosya seçin!"); return; }
         
-        // ExcelJS Kütüphane Kontrolü
-        if (typeof ExcelJS === 'undefined') {
-            logDiv.innerHTML = "<div class='error'>HATA: 'exceljs.min.js' bulunamadı. Lütfen klasörü kontrol edin.</div>";
+        if (typeof XlsxPopulate === 'undefined') {
+            logDiv.innerHTML = "<div class='error'>HATA: 'xlsx-populate.min.js' bulunamadı.</div>";
             return;
         }
 
@@ -81,19 +79,16 @@
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            logDiv.innerHTML += `<div>⏳ ${file.name} okunuyor...</div>`;
+            logDiv.innerHTML += `<div>⏳ ${file.name} işleniyor...</div>`;
 
             try {
-                const arrayBuffer = await file.arrayBuffer();
-                
-                // ExcelJS ile dosyayı yükle (Stilleri korur)
-                const workbook = new ExcelJS.Workbook();
-                await workbook.xlsx.load(arrayBuffer);
+                // xlsx-populate ile dosyayı aç
+                const workbook = await XlsxPopulate.fromDataAsync(file);
 
-                // "Kalan_Stok" sayfasını bul
+                // Sayfayı bul (Büyük/küçük harf duyarsız)
                 let targetSheet = null;
-                workbook.eachSheet((sheet, id) => {
-                    if (sheet.name.toLowerCase() === "kalan_stok") {
+                workbook.sheets().forEach(sheet => {
+                    if (sheet.name().toLowerCase() === "kalan_stok") {
                         targetSheet = sheet;
                     }
                 });
@@ -103,67 +98,45 @@
                     continue;
                 }
 
-                // D5 hücresindeki veriyi güvenli al
-                const d5Cell = targetSheet.getCell('D5');
+                // D5 hücresini oku
+                const cellValue = targetSheet.cell("D5").value();
                 let targetName = "";
 
-                // ExcelJS'de hücre değeri nesne olabilir (formül, rich text vs.)
-                if (d5Cell.value) {
-                    if (typeof d5Cell.value === 'object' && d5Cell.value.result) {
-                        targetName = d5Cell.value.result.toString(); // Formül sonucu
-                    } else if (typeof d5Cell.value === 'object' && d5Cell.value.richText) {
-                         // Zengin metin ise düz metne çevir
-                        targetName = d5Cell.value.richText.map(t => t.text).join('');
-                    } else {
-                        targetName = d5Cell.value.toString(); // Düz veri
-                    }
-                }
-
-                // D5 boşsa dosya adını kullan
-                if (!targetName || targetName.trim() === "") {
+                if (cellValue) {
+                     // Formül sonucu veya text olabilir, string'e çevir
+                    targetName = cellValue.toString().trim();
+                } else {
                     targetName = file.name.replace(/\.[^/.]+$/, "") + "_stok";
                     logDiv.innerHTML += `<div class="warning">⚠️ D5 boş, dosya adı kullanıldı.</div>`;
                 }
 
-                // Yasaklı karakterleri temizle
-                targetName = targetName.trim().replace(/[<>:"/\\|?*]/g, "_").substring(0, 31);
+                // Yasaklı karakterleri temizle ve 31 karaktere sığdır
+                targetName = targetName.replace(/[<>:"/\\|?*]/g, "_").substring(0, 31);
 
                 // Diğer sayfaları sil
-                // Not: ExcelJS'de döngü içindeyken silmek index hatası verebilir, önce ID'leri topluyoruz.
-                const sheetsToRemove = [];
-                workbook.eachSheet((sheet, id) => {
-                    if (sheet.name !== targetSheet.name) {
-                        sheetsToRemove.push(sheet.id);
+                const sheetsToDelete = [];
+                workbook.sheets().forEach(sheet => {
+                    if (sheet.name() !== targetSheet.name()) {
+                        sheetsToDelete.push(sheet);
                     }
                 });
 
-                sheetsToRemove.forEach(id => {
-                    const sheet = workbook.getWorksheet(id);
-                    if(sheet) workbook.removeWorksheet(sheet.id);
-                });
+                // Silme işlemi
+                sheetsToDelete.forEach(sheet => sheet.delete());
 
-                // Kalan sayfanın adını güncelle
-                targetSheet.name = targetName;
+                // Kalan sayfanın adını değiştir
+                targetSheet.name(targetName);
 
-                // Görünüm ayarlarını sıfırla (Bozuk dosya hatasını engeller)
-                workbook.views = [
-                    {
-                        x: 0, y: 0, width: 10000, height: 20000,
-                        firstSheet: 0, activeTab: 0, visibility: 'visible'
-                    }
-                ];
+                // Dosyayı Blob olarak oluştur
+                const blob = await workbook.outputAsync();
 
-                // Dosyayı oluştur (Buffer olarak)
-                const buffer = await workbook.xlsx.writeBuffer();
-                
-                // Dosyayı indir
-                const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+                // İndir
                 saveAs(blob, targetName + ".xlsx");
                 
-                logDiv.innerHTML += `<div class="success">✅ Başarılı: ${targetName}.xlsx</div>`;
+                logDiv.innerHTML += `<div class="success">✅ Tamamlandı: ${targetName}.xlsx</div>`;
                 processedCount++;
 
-                await delay(500); // Tarayıcıyı beklet
+                await delay(500);
 
             } catch (err) {
                 console.error(err);
@@ -175,7 +148,7 @@
         btn.innerText = "Tekrar İşlem Yap";
         
         if (processedCount > 0) {
-            logDiv.innerHTML += `<div style="color:#00b894; font-weight:bold; margin-top:10px;">🎉 İşlem Tamamlandı!</div>`;
+            logDiv.innerHTML += `<div style="color:#00b894; font-weight:bold; margin-top:10px;">🎉 Tüm İşlemler Bitti!</div>`;
         }
     }
 </script>
